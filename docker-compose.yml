@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - API_KEY=${API_KEY}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 9 * * 1}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_STORAGE_BUCKET=${GCP_STORAGE_BUCKET}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp:/app/tmp
+      - ./google-credentials.json:/app/google-credentials.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
