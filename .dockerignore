@@ -1,0 +1,35 @@
+# バージョン管理システム
+.git
+.gitignore
+
+# ノードモジュール
+node_modules
+
+# ビルド成果物
+dist
+
+# ログファイル
+logs/*
+*.log
+
+# 一時ファイル
+tmp/*
+
+# 開発用ファイル
+.eslintrc*
+.prettierrc*
+.vscode
+jest.config.js
+*.test.ts
+*.spec.ts
+src/test-*
+
+# 環境設定ファイル（ビルド時に別途コピー）
+.env*
+!.env.example
+
+# その他不要なファイル
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore

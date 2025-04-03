@@ -1,9 +1,8 @@
-// src/index.ts
 import express from 'express';
 import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
-import { PhoneUsageReporter } from './reporters/phoneUsageReporter';
+import { DailyReporter, HourlyReporter, WeeklyReporter } from './reporters'; // reporters/index.ts 経由で個別レポーターをインポート
 import { apiRouter } from './routes';
 import { healthRouter } from './routes/health';
 import { config } from './config';
@@ -36,13 +35,17 @@ const supabase = createClient(
 // Slack Webhookの初期化
 const webhook = new IncomingWebhook(config.slack.webhookUrl);
 
-// レポーター初期化
-const reporter = new PhoneUsageReporter(supabase, webhook);
+// 各レポーターの初期化
+const dailyReporter = new DailyReporter(supabase, webhook);
+const hourlyReporter = new HourlyReporter(supabase, webhook);
+const weeklyReporter = new WeeklyReporter(supabase, webhook);
 
-// アプリケーション全体で使用するオブジェクトをlocalsに保存
+// アプリ全体で利用するオブジェクトをlocalsに保存
 app.locals.supabase = supabase;
 app.locals.webhook = webhook;
-app.locals.reporter = reporter;
+app.locals.dailyReporter = dailyReporter;
+app.locals.hourlyReporter = hourlyReporter;
+app.locals.weeklyReporter = weeklyReporter;
 
 // ルーターのマウント
 app.use('/api', apiRouter);
@@ -74,14 +77,41 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// Cronジョブの設定：指定されたスケジュールで実行
-cron.schedule(config.app.cronSchedule, async () => {
+// Cronスケジュールの設定
+const weeklySchedule = config.app.cronSchedule;
+const hourlySchedule = config.app.hourlySchedule;
+const dailySchedule = config.app.dailySchedule;
+
+// 週間レポートのCronジョブ設定（WeeklyReporter を利用）
+cron.schedule(weeklySchedule, async () => {
   logger.info('週間レポートCronジョブを実行します');
   try {
-    const result = await reporter.sendReportToAllUsers();
-    logger.info(`Cronジョブ完了: ${result.total}人処理, 成功: ${result.success}, 失敗: ${result.failed}`);
+    const result = await weeklyReporter.sendReportToAllUsers();
+    logger.info(`週間レポートジョブ完了: ${result.total}人処理, 成功: ${result.success}, 失敗: ${result.failed}`);
   } catch (error) {
-    logger.error('Cronジョブエラー:', { error });
+    logger.error('週間レポートジョブエラー:', { error });
+  }
+});
+
+// 毎時レポートのCronジョブ設定（HourlyReporter を利用）
+cron.schedule(hourlySchedule, async () => {
+  logger.info('毎時レポートCronジョブを実行します');
+  try {
+    const result = await hourlyReporter.sendHourlyReportToAllUsers();
+    logger.info(`毎時レポートジョブ完了: ${result.total}人処理, 成功: ${result.success}, 失敗: ${result.failed}`);
+  } catch (error) {
+    logger.error('毎時レポートジョブエラー:', { error });
+  }
+});
+
+// 日次レポートのCronジョブ設定（DailyReporter を利用）
+cron.schedule(dailySchedule, async () => {
+  logger.info('日次レポートCronジョブを実行します');
+  try {
+    const result = await dailyReporter.sendDailyReportToAllUsers();
+    logger.info(`日次レポートジョブ完了: ${result.total}人処理, 成功: ${result.success}, 失敗: ${result.failed}`);
+  } catch (error) {
+    logger.error('日次レポートジョブエラー:', { error });
   }
 });
 
@@ -89,7 +119,9 @@ cron.schedule(config.app.cronSchedule, async () => {
 const PORT = config.app.port;
 app.listen(PORT, () => {
   logger.info(`サーバーが起動しました: http://localhost:${PORT}`);
-  logger.info(`Cronスケジュール: ${config.app.cronSchedule}`);
+  logger.info(`週間レポートCronスケジュール: ${weeklySchedule}`);
+  logger.info(`毎時レポートCronスケジュール: ${hourlySchedule}`);
+  logger.info(`日次レポートCronスケジュール: ${dailySchedule}`);
 });
 
 // プロセス終了時のクリーンアップ

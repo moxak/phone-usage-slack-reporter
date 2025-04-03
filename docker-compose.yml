@@ -1,29 +1,37 @@
 version: '3.8'
 
 services:
-  app:
+  phone-usage-reporter:
     build: .
+    container_name: phone-usage-reporter
     ports:
-      - "3000:3000"
+      - "${PORT:-4600}:${PORT:-4600}"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-4600}
       - API_KEY=${API_KEY}
       - CRON_SCHEDULE=${CRON_SCHEDULE:-0 9 * * 1}
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
-      - GCP_STORAGE_BUCKET=${GCP_STORAGE_BUCKET}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Supabase関連設定
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET}
+      # Slack関連設定
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
     volumes:
       - ./logs:/app/logs
       - ./tmp:/app/tmp
-      - ./google-credentials.json:/app/google-credentials.json:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-4600}/health"]
       interval: 1m
       timeout: 10s
       retries: 3
       start_period: 30s
+    
+    # 本番環境では常にログを保存
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

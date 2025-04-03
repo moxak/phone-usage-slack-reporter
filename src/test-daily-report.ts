@@ -1,12 +1,22 @@
-// src/test-report.ts
+// src/test-daily-report.ts
 import dotenv from 'dotenv';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
-import { PhoneUsageReporter } from './reporters/phoneUsageReporter';
+import { DailyReporter } from './reporters'; // reporters/index.ts 経由で DailyReporter をインポート
 import { Database } from './types/supabase';
 import fs from 'fs';
 import * as jestMock from 'jest-mock';
+
+// コマンドライン引数の解析
+const args = process.argv.slice(2);
+let userId = '65327d40-517f-4ab8-8723-e2e3d697be17'; // デフォルトのユーザーID
+
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--user' && i + 1 < args.length) {
+    userId = args[i + 1];
+  }
+}
 
 // 環境変数の読み込み
 const envFiles = ['.env.local', '.env'];
@@ -23,7 +33,6 @@ const requiredEnvVars = [
   'SUPABASE_SERVICE_KEY',
   'SLACK_WEBHOOK_URL',
 ];
-
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 if (missingEnvVars.length > 0) {
   console.error('以下の必須環境変数が設定されていません:');
@@ -31,13 +40,10 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
-// テスト対象ユーザーID
-const testUserId = '65327d40-517f-4ab8-8723-e2e3d697be17';
-
-async function testReport() {
+async function testDailyReport() {
   try {
-    console.log('テストレポート生成を開始します...');
-    console.log(`ユーザーID: ${testUserId}`);
+    console.log('日次レポートのテスト生成を開始します...');
+    console.log(`ユーザーID: ${userId}`);
 
     // Supabaseクライアントの初期化
     const supabase = createClient<Database>(
@@ -45,30 +51,27 @@ async function testReport() {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // ユーザーのデータ存在確認
+    // ユーザーのデータ存在確認（例: 日次サマリーデータが存在するか）
     const { data: userData, error: userError } = await supabase
-      .from('hourly_phone_usage')
-      .select('id')
-      .eq('user_id', testUserId)
+      .from('daily_usage_summary')
+      .select('date')
+      .eq('user_id', userId)
       .limit(1);
 
     if (userError) {
       console.error('Supabase接続エラー:', userError.message);
       process.exit(1);
     }
-
     if (!userData || userData.length === 0) {
-      console.error(`指定されたユーザーID (${testUserId}) のデータが見つかりません。`);
+      console.error(`指定されたユーザーID (${userId}) の日次データが見つかりません。`);
       process.exit(1);
     }
+    console.log('ユーザーデータを確認しました。日次レポート生成を開始します...');
 
-    console.log('ユーザーデータを確認しました。レポート生成を開始します...');
-
-    // Slack Webhookの初期化
+    // Slack Webhook の初期化
     const webhook = new IncomingWebhook(process.env.SLACK_WEBHOOK_URL!);
 
-    // UploadサービスのモックアップをGCS実装の代わりに使用
-    // 実際の本番環境ではこのモックを削除してください
+    // Uploadサービスのモック（本番では実際の実装に置き換えてください）
     const mockStorage = {
       uploadImageToStorage: async (filePath: string, destination: string) => {
         console.log(`画像アップロード（モック）: ${filePath} -> ${destination}`);
@@ -78,20 +81,39 @@ async function testReport() {
     };
     jestMock.fn(() => mockStorage);
 
-    // レポーター初期化
-    const reporter = new PhoneUsageReporter(supabase, webhook);
+    // DailyReporter の初期化
+    const dailyReporter = new DailyReporter(supabase, webhook);
 
-    // レポート送信実行
-    console.log('レポート生成中...');
-    await reporter.sendReport(testUserId);
+    // 日次レポート送信実行
+    console.log('日次レポート生成中...');
+    await dailyReporter.sendDailyReport(userId);
     
-    console.log('テストレポートが正常に送信されました！');
+    console.log('日次レポートが正常に送信されました！');
     process.exit(0);
   } catch (error) {
-    console.error('テストレポート生成中にエラーが発生しました:', error);
+    console.error('日次レポート生成中にエラーが発生しました:', error);
     process.exit(1);
   }
 }
 
+// 使用方法の表示
+function printUsage() {
+  console.log(`
+使用方法: npm run test-daily-report -- [オプション]
+
+オプション:
+  --user <id>     ユーザーIDを指定 (デフォルト: 65327d40-517f-4ab8-8723-e2e3d697be17)
+
+例:
+  npm run test-daily-report
+  npm run test-daily-report -- --user 123456-abcdef
+  `);
+}
+
+if (args.includes('--help') || args.includes('-h')) {
+  printUsage();
+  process.exit(0);
+}
+
 // テスト実行
-testReport();
+testDailyReport();
