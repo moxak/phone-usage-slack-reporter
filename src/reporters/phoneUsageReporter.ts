@@ -4,6 +4,11 @@ import { IncomingWebhook } from '@slack/webhook';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 import fs from 'fs';
 import path from 'path';
+import {
+  generateBarChart,
+  generatePieChart,
+  generateLineChart
+} from '../utils/chart-generator';
 import { Database, DailyUsageSummary, AppUsageData } from '../types/supabase';
 import { uploadImageToStorage, getPublicURL } from '../utils/storage';
 import { logger } from '../utils/logger';
@@ -31,13 +36,25 @@ export class PhoneUsageReporter {
   ) {
     this.supabase = supabase;
     this.webhook = webhook;
-
-    // グラフ生成用キャンバスの初期化
+  
+    // グラフ生成用キャンバスの初期化 - 修正版
     this.chartJSNodeCanvas = new ChartJSNodeCanvas({
       width: 800,
       height: 400,
+      backgroundColour: 'white', // 背景色を白に設定 - 重要
+      plugins: {
+        modern: [
+          'chartjs-plugin-datalabels'  // オプションのプラグイン
+        ]
+      },
       chartCallback: (ChartJS) => {
-        ChartJS.defaults.font.family = 'Arial';
+        // グローバル設定
+        ChartJS.defaults.font.family = 'Arial, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Meiryo, メイリオ, sans-serif';
+        ChartJS.defaults.color = '#000000'; // デフォルトのテキスト色を黒に設定
+        ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.1)'; // デフォルトの枠線色を薄い黒に設定
+        ChartJS.defaults.scale.grid.color = 'rgba(0, 0, 0, 0.05)'; // デフォルトのグリッド線色
+        
+        // 他の設定も必要に応じて追加
       }
     });
   }
@@ -188,160 +205,72 @@ export class PhoneUsageReporter {
   }
 
   /**
-   * 日次使用時間グラフの生成
+   * 特定ユーザーの週間レポートを送信
    */
-  private async generateUsageChart(reportData: WeeklyReportData): Promise<Buffer> {
-    // グラフ設定
-    const configuration = {
-      type: 'bar' as const,
-      data: {
-        labels: reportData.dates,
-        datasets: [
-          {
-            label: '使用時間 (分)',
-            data: reportData.usageTimes,
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgb(54, 162, 235)',
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          title: {
-            display: true,
-            text: '過去7日間のスマホ使用時間統計',
-            font: {
-              size: 18
-            }
-          },
-          legend: {
-            position: 'top' as const,
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: '使用時間 (分)'
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: '日付'
-            }
-          }
-        }
+  public async sendReport(userId: string): Promise<void> {
+    try {
+      logger.info(`ユーザー ${userId} のレポート作成を開始します`);
+      
+      // レポートデータの準備
+      const reportData = await this.prepareWeeklyReportData(userId);
+      
+      // グラフの生成（新しいユーティリティを使用）
+      logger.debug(`ユーザー ${userId} のグラフを生成します`);
+      
+      // 日次使用時間グラフ
+      const usageChartPath = await generateBarChart(
+        reportData.dates,
+        reportData.usageTimes,
+        '過去7日間のスマホ使用時間統計',
+        '使用時間 (分)',
+        '日付'
+      );
+      
+      // トップアプリ使用時間円グラフ
+      const topAppsChartPath = await generatePieChart(
+        reportData.topApps.map(app => app.name),
+        reportData.topApps.map(app => app.time),
+        '最もよく使ったアプリ (過去7日間)'
+      );
+      
+      // 時間帯別使用分布折れ線グラフ
+      const hourlyChartPath = await generateLineChart(
+        Array.from({ length: 24 }, (_, i) => `${i}時`),
+        reportData.hourlyDistribution,
+        '時間帯別スマホ使用分布',
+        '使用時間 (分)',
+        '時間帯'
+      );
+      
+      // 画像をストレージにアップロード
+      logger.debug(`ユーザー ${userId} のグラフをストレージにアップロードします`);
+      const timestamp = Date.now();
+      const usageChartUrl = await uploadImageToStorage(usageChartPath, `reports/${userId}/${timestamp}/usage.png`);
+      const topAppsChartUrl = await uploadImageToStorage(topAppsChartPath, `reports/${userId}/${timestamp}/apps.png`);
+      const hourlyChartUrl = await uploadImageToStorage(hourlyChartPath, `reports/${userId}/${timestamp}/hourly.png`);
+      
+      // Slackにメッセージ送信
+      logger.info(`ユーザー ${userId} のレポートをSlackに送信します`);
+      await this.sendSlackMessage(reportData, usageChartUrl, topAppsChartUrl, hourlyChartUrl);
+      
+      logger.info(`ユーザー ${userId} の週間レポートを送信しました`);
+      
+      // 一時ファイルの削除
+      try {
+        fs.unlinkSync(usageChartPath);
+        fs.unlinkSync(topAppsChartPath);
+        fs.unlinkSync(hourlyChartPath);
+        logger.debug('一時ファイルを削除しました');
+      } catch (error) {
+        logger.warn('一時ファイル削除中にエラーが発生しました', { error });
       }
-    };
-    
-    // グラフ画像をバッファとして取得
-    return await this.chartJSNodeCanvas.renderToBuffer(configuration);
+      
+    } catch (error) {
+      logger.error(`ユーザー ${userId} のレポート送信エラー:`, { error });
+      throw error;
+    }
   }
 
-  /**
-   * トップアプリ使用時間のグラフ生成
-   */
-  private async generateTopAppsChart(reportData: WeeklyReportData): Promise<Buffer> {
-    // アプリ名と使用時間の配列を準備
-    const appNames = reportData.topApps.map(app => app.name);
-    const appTimes = reportData.topApps.map(app => app.time);
-    
-    // ランダムな色を生成
-    const backgroundColors = reportData.topApps.map(() => 
-      `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.5)`
-    );
-    
-    // グラフ設定
-    const configuration = {
-      type: 'pie' as const,
-      data: {
-        labels: appNames,
-        datasets: [
-          {
-            data: appTimes,
-            backgroundColor: backgroundColors,
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          title: {
-            display: true,
-            text: '最もよく使ったアプリ (過去7日間)',
-            font: {
-              size: 18
-            }
-          },
-          legend: {
-            position: 'right' as const,
-          }
-        }
-      }
-    };
-    
-    // グラフ画像をバッファとして取得
-    return await this.chartJSNodeCanvas.renderToBuffer(configuration);
-  }
-
-  /**
-   * 時間帯別使用分布グラフの生成
-   */
-  private async generateHourlyDistributionChart(reportData: WeeklyReportData): Promise<Buffer> {
-    // 時間帯ラベルを準備
-    const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}時`);
-    
-    // グラフ設定
-    const configuration = {
-      type: 'line' as const,
-      data: {
-        labels: hourLabels,
-        datasets: [
-          {
-            label: '時間帯別使用時間 (分)',
-            data: reportData.hourlyDistribution,
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          title: {
-            display: true,
-            text: '時間帯別スマホ使用分布',
-            font: {
-              size: 18
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: '使用時間 (分)'
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: '時間帯'
-            }
-          }
-        }
-      }
-    };
-    
-    // グラフ画像をバッファとして取得
-    return await this.chartJSNodeCanvas.renderToBuffer(configuration);
-  }
 
   /**
    * Slackメッセージの送信
@@ -442,62 +371,6 @@ export class PhoneUsageReporter {
         }
       ]
     });
-  }
-
-  /**
-   * 特定ユーザーの週間レポートを送信
-   */
-  public async sendReport(userId: string): Promise<void> {
-    try {
-      logger.info(`ユーザー ${userId} のレポート作成を開始します`);
-      
-      // レポートデータの準備
-      const reportData = await this.prepareWeeklyReportData(userId);
-      
-      // グラフの生成
-      logger.debug(`ユーザー ${userId} のグラフを生成します`);
-      const usageChartBuffer = await this.generateUsageChart(reportData);
-      const topAppsChartBuffer = await this.generateTopAppsChart(reportData);
-      const hourlyChartBuffer = await this.generateHourlyDistributionChart(reportData);
-      
-      // 一時ファイル保存パス
-      const tempDir = path.join(process.cwd(), 'tmp');
-      // tmpディレクトリがなければ作成
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-      
-      const timestamp = Date.now();
-      const usageChartPath = path.join(tempDir, `usage_${userId}_${timestamp}.png`);
-      const topAppsChartPath = path.join(tempDir, `apps_${userId}_${timestamp}.png`);
-      const hourlyChartPath = path.join(tempDir, `hourly_${userId}_${timestamp}.png`);
-      
-      // 一時ファイルとして保存
-      fs.writeFileSync(usageChartPath, usageChartBuffer);
-      fs.writeFileSync(topAppsChartPath, topAppsChartBuffer);
-      fs.writeFileSync(hourlyChartPath, hourlyChartBuffer);
-      
-      // 画像をストレージにアップロード
-      logger.debug(`ユーザー ${userId} のグラフをストレージにアップロードします`);
-      const usageChartUrl = await uploadImageToStorage(usageChartPath, `reports/${userId}/${timestamp}/usage.png`);
-      const topAppsChartUrl = await uploadImageToStorage(topAppsChartPath, `reports/${userId}/${timestamp}/apps.png`);
-      const hourlyChartUrl = await uploadImageToStorage(hourlyChartPath, `reports/${userId}/${timestamp}/hourly.png`);
-      
-      // Slackにメッセージ送信
-      logger.info(`ユーザー ${userId} のレポートをSlackに送信します`);
-      await this.sendSlackMessage(reportData, usageChartUrl, topAppsChartUrl, hourlyChartUrl);
-      
-      logger.info(`ユーザー ${userId} の週間レポートを送信しました`);
-      
-      // 一時ファイルの削除
-      fs.unlinkSync(usageChartPath);
-      fs.unlinkSync(topAppsChartPath);
-      fs.unlinkSync(hourlyChartPath);
-      
-    } catch (error) {
-      logger.error(`ユーザー ${userId} のレポート送信エラー:`, { error });
-      throw error;
-    }
   }
 
   /**
