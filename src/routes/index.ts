@@ -1,11 +1,35 @@
 // src/routes/index.ts
 import express from 'express';
 import { logger } from '../utils/logger.js';
+import { WeeklyReporter } from '../reporters/WeeklyReporter.js';
+import { HourlyReporter } from '../reporters/HourlyReporter.js';
 
 export const apiRouter = express.Router();
 
 apiRouter.use(express.json());
 apiRouter.use(express.urlencoded({ extended: true }));
+
+// 循環参照を処理する関数
+const safeJson = (data: { total: number; success: number; failed: number; }) => {
+  try {
+    // 直接循環参照を含むプロパティを除外
+    const safeData = { ...data };
+    
+    // 知られている循環参照のプロパティを削除
+    if (typeof safeData === 'object' && safeData !== null) {
+      ['_idlePrev', '_idleNext', '_events', '_eventsCount', '_maxListeners'].forEach(prop => {
+        if (prop in safeData) {
+          delete (safeData as any)[prop];
+        }
+      });
+    }
+    
+    return safeData;
+  } catch (err) {
+    logger.error('safeJson変換エラー:', { error: err instanceof Error ? err.message : String(err) });
+    return { error: 'データの安全な変換に失敗しました' };
+  }
+};
 
 // APIのルートを定義
 apiRouter.get('/', (_req, res) => {
@@ -25,17 +49,18 @@ apiRouter.post('/trigger-weekly-reports', async (req: express.Request, res: expr
   try {
     logger.info('全ユーザー向け週間レポートの生成を手動でトリガーします');
 
-    const reporter = req.app.locals.reporter;
-    const result = await reporter.sendReportToAllUsers();
+    // 正しいレポーターインスタンスを取得
+    const weeklyReporter = req.app.locals.weeklyReporter as WeeklyReporter;
+    if (!weeklyReporter) {
+      throw new Error('weeklyReporterが見つかりません');
+    }
+    
+    const result = await weeklyReporter.sendReportToAllUsers();
 
     res.json({
       success: true,
       message: '週間レポート処理が完了しました',
-      stats: {
-        total: result.total,
-        success: result.success,
-        failed: result.failed
-      }
+      stats: safeJson(result)
     });
   } catch (error) {
     logger.error('週間レポートトリガーエラー:', { 
@@ -58,19 +83,25 @@ apiRouter.post('/trigger-hourly-reports', async (req: express.Request, res: expr
   try {
     logger.info('全ユーザー向け毎時レポートの生成を手動でトリガーします');
 
-    const reporter = req.app.locals.reporter;
-    logger.info('reporter:', { reporter });
-    logger.info('reporter.sendHourlyReportToAllUsers:', { sendHourlyReportToAllUsers: reporter.sendHourlyReportToAllUsers });
-    const result = await reporter.sendHourlyReportToAllUsers();
+    // 正しいレポーターインスタンスを取得
+    const hourlyReporter = req.app.locals.hourlyReporter as HourlyReporter;
+    if (!hourlyReporter) {
+      throw new Error('hourlyReporterが見つかりません');
+    }
+    
+    const result = await hourlyReporter.sendHourlyReportToAllUsers();
+    
+    // 循環参照を避けて安全なデータだけを返す
+    const safeResult = {
+      total: result.total,
+      success: result.success,
+      failed: result.failed
+    };
 
     res.json({
       success: true,
       message: '毎時レポート処理が完了しました',
-      stats: {
-        total: result.total,
-        success: result.success,
-        failed: result.failed
-      }
+      stats: safeResult
     });
   } catch (error) {
     // エラーの詳細情報をログに記録
@@ -78,8 +109,7 @@ apiRouter.post('/trigger-hourly-reports', async (req: express.Request, res: expr
       error: error instanceof Error ? { 
         message: error.message, 
         stack: error.stack,
-        name: error.name,
-        toString: error.toString()
+        name: error.name
       } : error 
     });
     res.status(500).json({ 
@@ -117,7 +147,7 @@ apiRouter.get('/check-data', async (req: express.Request, res: express.Response)
     res.json({
       success: true,
       userId,
-      recentData
+      recentData: safeJson(recentData)
     });
   } catch (error) {
     logger.error('データ確認APIエラー:', { error });

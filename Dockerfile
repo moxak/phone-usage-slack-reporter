@@ -2,8 +2,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# canvasとそのネイティブ依存関係に必要なパッケージをインストール
 RUN apk add --no-cache \
+    # 既存の依存関係
     python3 \
     make \
     g++ \
@@ -11,7 +11,19 @@ RUN apk add --no-cache \
     cairo-dev \
     pango-dev \
     libjpeg-turbo-dev \
-    giflib-dev
+    giflib-dev \
+    # 日本語フォントとロケール
+    font-noto-cjk \
+    icu-libs \
+    tzdata
+
+# タイムゾーンを設定
+ENV TZ=Asia/Tokyo
+
+# ロケールとエンコーディングの設定
+ENV LANG=ja_JP.UTF-8 \
+    LANGUAGE=ja_JP:ja \
+    LC_ALL=ja_JP.UTF-8
 
 # 依存関係ファイルのみをコピーしてインストール
 COPY package*.json ./

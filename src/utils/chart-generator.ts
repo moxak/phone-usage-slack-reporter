@@ -1,5 +1,5 @@
 // src/utils/chart-generator.ts
-import { createCanvas } from 'canvas';
+import { createCanvas, registerFont } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 import { logger } from './logger.js';
@@ -25,6 +25,8 @@ const height = 400;
 const margin = { top: 50, right: 80, bottom: 60, left: 60 };
 const innerWidth = width - margin.left - margin.right;
 const innerHeight = height - margin.top - margin.bottom;
+const fontFamily = '"Noto Sans CJK JP", "メイリオ", "Meiryo", sans-serif';
+registerFont('/usr/share/fonts/noto/NotoSansCJK-Regular.ttc', { family: 'Noto Sans CJK JP' });
 
 /**
  * 棒グラフを生成する関数
@@ -106,7 +108,7 @@ export async function generateBarChart(
       context.textAlign = 'center';
       context.textBaseline = 'top';
       context.fillStyle = '#333333';
-      context.font = '12px Arial, sans-serif';
+      context.font = `12px ${fontFamily}`;
       
       labels.forEach(label => {
         context.fillText(
@@ -117,7 +119,7 @@ export async function generateBarChart(
       });
       
       // X軸のタイトル
-      context.font = '14px Arial, sans-serif';
+      context.font = `14px ${fontFamily}`;
       context.fillText(xAxisLabel, innerWidth / 2, innerHeight + 40);
       
       // Y軸の描画
@@ -132,7 +134,7 @@ export async function generateBarChart(
       context.textAlign = 'right';
       context.textBaseline = 'middle';
       context.fillStyle = '#333333';
-      context.font = '12px Arial, sans-serif';
+      context.font = `12px ${fontFamily}`;
       
       yTicks.forEach((tick: { toString: () => string; }) => {
         context.fillText(tick.toString(), -10, yScale(tick));
@@ -143,7 +145,7 @@ export async function generateBarChart(
       context.translate(-40, innerHeight / 2);
       context.rotate(-Math.PI / 2);
       context.textAlign = 'center';
-      context.font = '14px Arial, sans-serif';
+      context.font = `14px ${fontFamily}`;
       context.fillText(yAxisLabel, 0, 0);
       context.restore();
       
@@ -167,7 +169,7 @@ export async function generateBarChart(
           context.textAlign = 'center';
           context.textBaseline = 'bottom';
           context.fillStyle = '#333333';
-          context.font = '12px Arial, sans-serif';
+          context.font = `12px ${fontFamily}`;
           context.fillText(d.value.toString(), x + barWidth / 2, y - 5);
         }
       });
@@ -175,7 +177,7 @@ export async function generateBarChart(
       // グラフのタイトル
       context.textAlign = 'center';
       context.textBaseline = 'top';
-      context.font = 'bold 18px Arial, sans-serif';
+      context.font = `bold 18px ${fontFamily}`;
       context.fillStyle = '#333333';
       context.fillText(title, innerWidth / 2, -30);
       
@@ -263,7 +265,7 @@ export async function generatePieChart(
     // タイトルの描画
     context.textAlign = 'center';
     context.textBaseline = 'top';
-    context.font = 'bold 18px Arial, sans-serif';
+    context.font = `bold 18px ${fontFamily}`;
     context.fillStyle = '#333333';
     context.fillText(title, width / 2, 20);
     
@@ -309,7 +311,7 @@ export async function generatePieChart(
     context.textAlign = 'left';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = 'bold 14px Arial, sans-serif';
+    context.font = `bold 14px ${fontFamily}`;
     context.fillText('凡例', legendX, legendY - 25);
     
     // 凡例の項目
@@ -325,7 +327,7 @@ export async function generatePieChart(
       // ラベルとパーセント
       const percent = (d.value / total) * 100;
       context.fillStyle = '#333333';
-      context.font = '12px Arial, sans-serif';
+      context.font = `12px ${fontFamily}`;
       context.textAlign = 'left';
       context.textBaseline = 'middle';
       context.fillText(`${d.label}: ${d.value.toFixed(1)}分 (${percent.toFixed(1)}%)`, legendX + 25, y + 7);
@@ -370,14 +372,14 @@ function generateEmptyPieChart(title: string): Promise<string> {
   // タイトルの描画
   context.textAlign = 'center';
   context.textBaseline = 'top';
-  context.font = 'bold 18px Arial, sans-serif';
+  context.font = `bold 18px ${fontFamily}`;
   context.fillStyle = '#333333';
   context.fillText(title, width / 2, 20);
   
   // 空のメッセージを中央に表示
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.font = '16px Arial, sans-serif';
+  context.font = `16px ${fontFamily}`;
   context.fillStyle = '#666666';
   context.fillText('データがありません', width / 2, height / 2);
   
@@ -468,7 +470,7 @@ export async function generateLineChart(
     context.textAlign = 'center';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = `12px ${fontFamily}`;
     
     labels.forEach(label => {
       context.fillText(
@@ -479,7 +481,7 @@ export async function generateLineChart(
     });
     
     // X軸のタイトル
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(xAxisLabel, innerWidth / 2, innerHeight + 40);
     
     // Y軸の描画
@@ -494,7 +496,7 @@ export async function generateLineChart(
     context.textAlign = 'right';
     context.textBaseline = 'middle';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = '12px ${fontFamily}';
     
     yTicks.forEach((tick: number) => {
       // Y軸の目盛り値を小数点第一位まで表示
@@ -506,7 +508,7 @@ export async function generateLineChart(
     context.translate(-40, innerHeight / 2);
     context.rotate(-Math.PI / 2);
     context.textAlign = 'center';
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(yAxisLabel, 0, 0);
     context.restore();
     
@@ -552,14 +554,14 @@ export async function generateLineChart(
       context.textAlign = 'center';
       context.textBaseline = 'bottom';
       context.fillStyle = '#333333';
-      context.font = 'bold 12px Arial, sans-serif';
+      context.font = 'bold 12px ${fontFamily}';
       context.fillText(value.toFixed(1), x, y - 10);
     });
     
     // グラフのタイトル
     context.textAlign = 'center';
     context.textBaseline = 'top';
-    context.font = 'bold 18px Arial, sans-serif';
+    context.font = 'bold 18px ${fontFamily}';
     context.fillStyle = '#333333';
     context.fillText(title, innerWidth / 2, -30);
     
@@ -684,7 +686,7 @@ export async function generateStackedBarChart(
     context.textAlign = 'center';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = '12px ${fontFamily}';
     
     labels.forEach(label => {
       context.fillText(
@@ -695,7 +697,7 @@ export async function generateStackedBarChart(
     });
     
     // X軸のタイトル
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(xAxisLabel, adjustedInnerWidth / 2, innerHeight + 40);
     
     // Y軸の描画
@@ -710,7 +712,7 @@ export async function generateStackedBarChart(
     context.textAlign = 'right';
     context.textBaseline = 'middle';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = '12px ${fontFamily}';
     
     yTicks.forEach((tick: number) => {
       // Y軸の目盛り値を小数点第一位まで表示
@@ -722,7 +724,7 @@ export async function generateStackedBarChart(
     context.translate(-40, innerHeight / 2);
     context.rotate(-Math.PI / 2);
     context.textAlign = 'center';
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(yAxisLabel, 0, 0);
     context.restore();
     
@@ -753,7 +755,7 @@ export async function generateStackedBarChart(
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             context.fillStyle = '#ffffff';
-            context.font = 'bold 11px Arial, sans-serif';
+            context.font = 'bold 11px ${fontFamily}';
             
             // 値の表示（棒の中央）- 小数点第一位まで表示
             if (barHeight > 20) { // 棒が十分に高い場合のみ表示
@@ -776,7 +778,7 @@ export async function generateStackedBarChart(
         context.textAlign = 'center';
         context.textBaseline = 'bottom';
         context.fillStyle = '#333333';
-        context.font = 'bold 12px Arial, sans-serif';
+        context.font = 'bold 12px ${fontFamily}';
         
         // 合計値を小数点第一位まで表示
         context.fillText(
@@ -790,7 +792,7 @@ export async function generateStackedBarChart(
     // グラフのタイトル
     context.textAlign = 'center';
     context.textBaseline = 'top';
-    context.font = 'bold 18px Arial, sans-serif';
+    context.font = 'bold 18px ${fontFamily}';
     context.fillStyle = '#333333';
     context.fillText(title, adjustedInnerWidth / 2, -30);
     
@@ -803,7 +805,7 @@ export async function generateStackedBarChart(
     context.textAlign = 'left';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = 'bold 14px Arial, sans-serif';
+    context.font = 'bold 14px ${fontFamily}';
     context.fillText('アプリ', legendX, legendY);
     
     // 凡例の項目
@@ -818,7 +820,7 @@ export async function generateStackedBarChart(
       
       // アプリ名
       context.fillStyle = '#333333';
-      context.font = '12px Arial, sans-serif';
+      context.font = '12px ${fontFamily}';
       context.textAlign = 'left';
       context.textBaseline = 'middle';
       context.fillText(app.appName, legendX + 25, y + 7);
@@ -960,7 +962,7 @@ export async function generateHourlyStackedBarChart(
     context.textAlign = 'center';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = '12px ${fontFamily}';
     
     // X軸のラベルを間引いて表示（全部表示すると重なる場合）
     const labelStep = Math.ceil(hourLabels.length / 12); // 最大12個程度のラベルを表示
@@ -976,7 +978,7 @@ export async function generateHourlyStackedBarChart(
     });
     
     // X軸のタイトル
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(xAxisLabel, adjustedInnerWidth / 2, innerHeight + 40);
     
     // Y軸の描画
@@ -991,7 +993,7 @@ export async function generateHourlyStackedBarChart(
     context.textAlign = 'right';
     context.textBaseline = 'middle';
     context.fillStyle = '#333333';
-    context.font = '12px Arial, sans-serif';
+    context.font = '12px ${fontFamily}';
     
     yTicks.forEach((tick: number) => {
       // Y軸の目盛り値を小数点第一位まで表示
@@ -1003,7 +1005,7 @@ export async function generateHourlyStackedBarChart(
     context.translate(-40, innerHeight / 2);
     context.rotate(-Math.PI / 2);
     context.textAlign = 'center';
-    context.font = '14px Arial, sans-serif';
+    context.font = '14px ${fontFamily}';
     context.fillText(yAxisLabel, 0, 0);
     context.restore();
     
@@ -1034,7 +1036,7 @@ export async function generateHourlyStackedBarChart(
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             context.fillStyle = '#ffffff';
-            context.font = 'bold 11px Arial, sans-serif';
+            context.font = 'bold 11px ${fontFamily}';
             
             // 値を小数点第一位まで表示
             context.fillText(
@@ -1054,7 +1056,7 @@ export async function generateHourlyStackedBarChart(
         context.textAlign = 'center';
         context.textBaseline = 'bottom';
         context.fillStyle = '#333333';
-        context.font = 'bold 12px Arial, sans-serif';
+        context.font = 'bold 12px ${fontFamily}';
         
         // 合計値を小数点第一位まで表示
         context.fillText(
@@ -1068,7 +1070,7 @@ export async function generateHourlyStackedBarChart(
     // グラフのタイトル
     context.textAlign = 'center';
     context.textBaseline = 'top';
-    context.font = 'bold 18px Arial, sans-serif';
+    context.font = 'bold 18px ${fontFamily}';
     context.fillStyle = '#333333';
     context.fillText(title, adjustedInnerWidth / 2, -30);
     
@@ -1080,7 +1082,7 @@ export async function generateHourlyStackedBarChart(
     context.textAlign = 'left';
     context.textBaseline = 'top';
     context.fillStyle = '#333333';
-    context.font = 'bold 14px Arial, sans-serif';
+    context.font = 'bold 14px ${fontFamily}';
     context.fillText('アプリ', legendX, legendY);
     
     // 凡例の項目
@@ -1101,7 +1103,7 @@ export async function generateHourlyStackedBarChart(
       }
       
       context.fillStyle = '#333333';
-      context.font = '12px Arial, sans-serif';
+      context.font = '12px ${fontFamily}';
       context.textAlign = 'left';
       context.textBaseline = 'middle';
       context.fillText(displayAppName, legendX + 25, y + 7);
@@ -1146,14 +1148,14 @@ function generateEmptyBarChart(title: string, message: string = 'データがあ
   // タイトルの描画
   context.textAlign = 'center';
   context.textBaseline = 'top';
-  context.font = 'bold 18px Arial, sans-serif';
+  context.font = 'bold 18px ${fontFamily}';
   context.fillStyle = '#333333';
   context.fillText(title, width / 2, 20);
   
   // 空のメッセージを中央に表示
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.font = '16px Arial, sans-serif';
+  context.font = '16px ${fontFamily}';
   context.fillStyle = '#666666';
   context.fillText(message, width / 2, height / 2);
   

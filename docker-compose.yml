@@ -11,7 +11,13 @@ services:
       - PORT=${PORT:-4600}
       - API_KEY=${API_KEY}
       - CRON_SCHEDULE=${CRON_SCHEDULE:-0 9 * * 1}
+      - HOURLY_CRON_SCHEDULE=${HOURLY_CRON_SCHEDULE:-55 * * * *}
+      - DAILY_CRON_SCHEDULE=${DAILY_CRON_SCHEDULE:-0 0 * * *}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # 追加: エンコーディング設定
+      - LANG=ja_JP.UTF-8
+      - LC_ALL=ja_JP.UTF-8
+      - TZ=Asia/Tokyo
       # Supabase関連設定
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}

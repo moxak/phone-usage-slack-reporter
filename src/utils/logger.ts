@@ -1,4 +1,6 @@
-// src/utils/logger.ts
+// src/utils/logger.js を修正
+// 循環参照を安全に処理するカスタムフォーマッタを追加
+
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 import fs from 'fs';
@@ -10,11 +12,56 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
+// 循環参照を処理する関数
+const safeStringify = (obj: { [key: string]: unknown;[key: symbol]: unknown;[x: number]: unknown; }, replacer = null, space = 2, depth = 3) => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function(key, value) {
+    if (typeof value === 'object' && value !== null) {
+      // 既に処理したオブジェクトは循環参照
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+      
+      // 関数の場合は文字列に変換
+      if (typeof value === 'function') {
+        return '[Function]';
+      }
+      
+      // このオブジェクトを処理済みとしてマーク
+      seen.add(value);
+      
+      // ネストの深さをチェック
+      if (depth <= 0) {
+        return '[Object]';
+      }
+      
+      // TimerオブジェクトやTimeout、EventEmitterなどの特殊オブジェクトのチェック
+      if (
+        value.constructor && 
+        (
+          value.constructor.name === 'Timeout' || 
+          value.constructor.name === 'TimersList' ||
+          value.constructor.name === 'EventEmitter'
+        )
+      ) {
+        return `[${value.constructor.name}]`;
+      }
+    }
+    
+    return value;
+  }, space);
+};
+
 // カスタムフォーマットの定義
 const customFormat = format.printf(({ level, message, timestamp, ...metadata }) => {
   let metaStr = '';
   if (Object.keys(metadata).length > 0) {
-    metaStr = JSON.stringify(metadata);
+    try {
+      // 安全なJSONシリアライズを使用
+      metaStr = safeStringify(metadata);
+    } catch (e) {
+      metaStr = `[Metadata serialization failed: ${(e as Error).message}]`;
+    }
   }
   return `${timestamp} [${level.toUpperCase()}]: ${message} ${metaStr}`;
 });
@@ -85,13 +132,13 @@ if (process.env.LOG_LEVEL) {
 
 // ログのショートカットメソッド
 export default {
-  debug: (message: string, meta?: any) => logger.debug(message, meta),
-  info: (message: string, meta?: any) => logger.info(message, meta),
-  warn: (message: string, meta?: any) => logger.warn(message, meta),
-  error: (message: string, meta?: any) => logger.error(message, meta),
+  debug: (message: string, meta: any) => logger.debug(message, meta),
+  info: (message: string, meta: any) => logger.info(message, meta),
+  warn: (message: string, meta: any) => logger.warn(message, meta),
+  error: (message: string, meta: any) => logger.error(message, meta),
   
   // HTTPリクエストログ用メソッド
-  http: (req: any, res: any, responseTime: number) => {
+  http: (req: { method: any; url: any; ip: any; headers: any; }, res: { statusCode: any; }, responseTime: any) => {
     const { method, url, ip, headers } = req;
     logger.http(`${method} ${url}`, {
       method,
