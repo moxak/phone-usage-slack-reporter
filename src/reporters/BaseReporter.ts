@@ -2,9 +2,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
 import fs from 'fs';
-import { Database } from '../types/supabase';
-import { uploadImageToStorage } from '../utils/storage';
-import { logger } from '../utils/logger';
+import { Database } from '../types/supabase.js';
+import { uploadImageToStorage } from '../utils/storage.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * ベースレポーター基底クラス

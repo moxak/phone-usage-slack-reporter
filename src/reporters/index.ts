@@ -1,3 +1,3 @@
-export { DailyReporter } from './DailyReporter';
-export { HourlyReporter } from './HourlyReporter';
-export { WeeklyReporter } from './WeeklyReporter';
+export { DailyReporter } from './DailyReporter.js';
+export { HourlyReporter } from './HourlyReporter.js';
+export { WeeklyReporter } from './WeeklyReporter.js';

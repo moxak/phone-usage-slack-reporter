@@ -4,8 +4,8 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
 // 分割された reporters/index.ts 経由で HourlyReporter をインポート
-import { HourlyReporter } from './reporters';
-import { Database } from './types/supabase';
+import { HourlyReporter } from './reporters/index.js';
+import { Database } from './types/supabase.js';
 import fs from 'fs';
 import * as jestMock from 'jest-mock';
 

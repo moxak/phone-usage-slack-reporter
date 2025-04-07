@@ -1,8 +1,8 @@
 // src/reporters/DailyReporter.ts
-import { BaseReporter } from './BaseReporter';
-import { DailyReportData } from '../types/phoneUsage';
-import { logger } from '../utils/logger';
-import { generateHourlyStackedBarChart, generatePieChart } from '../utils/chart-generator';
+import { BaseReporter } from './BaseReporter.js';
+import { DailyReportData } from '../types/phoneUsage.js';
+import { logger } from '../utils/logger.js';
+import { generateHourlyStackedBarChart, generatePieChart } from '../utils/chart-generator.js';
 
 export class DailyReporter extends BaseReporter {
   /**

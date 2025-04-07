@@ -2,7 +2,7 @@
 import express from 'express';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
-import { Database } from '../types/supabase';
+import { Database } from '../types/supabase.js';
 
 export const healthRouter = express.Router();
 
@@ -10,7 +10,7 @@ export const healthRouter = express.Router();
  * ヘルスチェックエンドポイント
  * 各サービスへの接続状態を確認
  */
-healthRouter.get('/', async (req, res) => {
+healthRouter.get('/', async (req: express.Request, res: express.Response) => {
   const supabase = req.app.locals.supabase as SupabaseClient<Database>;
   const webhook = req.app.locals.webhook as IncomingWebhook;
   

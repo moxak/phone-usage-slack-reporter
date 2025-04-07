@@ -2,7 +2,7 @@
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 import fs from 'fs';
-import { config } from '../config';
+import { config } from '../config.js';
 
 // ログディレクトリの確認と作成
 const logDir = path.join(process.cwd(), 'logs');

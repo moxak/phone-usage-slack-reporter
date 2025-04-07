@@ -1,9 +1,9 @@
 // src/reporters/WeeklyReporter.ts
-import { BaseReporter } from './BaseReporter';
-import { DailyUsageSummary } from '../types/supabase';
-import { WeeklyReportData } from '../types/phoneUsage';
-import { logger } from '../utils/logger';
-import { generateHourlyStackedBarChart, generateLineChart, generatePieChart } from '../utils/chart-generator';
+import { BaseReporter } from './BaseReporter.js';
+import { DailyUsageSummary } from '../types/supabase.js';
+import { WeeklyReportData } from '../types/phoneUsage.js';
+import { logger } from '../utils/logger.js';
+import { generateHourlyStackedBarChart, generateLineChart, generatePieChart } from '../utils/chart-generator.js';
 
 export class WeeklyReporter extends BaseReporter {
   /**

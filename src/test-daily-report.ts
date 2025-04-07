@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
-import { DailyReporter } from './reporters'; // reporters/index.ts 経由で DailyReporter をインポート
-import { Database } from './types/supabase';
+import { DailyReporter } from './reporters/index.js'; // reporters/index.ts 経由で DailyReporter をインポート
+import { Database } from './types/supabase.js';
 import fs from 'fs';
 import * as jestMock from 'jest-mock';
 

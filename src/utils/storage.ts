@@ -1,8 +1,8 @@
 // src/utils/storage.ts
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
-import { config as storageConfig } from '../config';
-import { logger } from './logger';
+import { config as storageConfig } from '../config.js';
+import { logger } from './logger.js';
 
 // Supabaseクライアントの初期化
 const supabase = createClient(

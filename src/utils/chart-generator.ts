@@ -1,16 +1,22 @@
 // src/utils/chart-generator.ts
-// D3.jsをダイナミックインポートに変更
 import { createCanvas } from 'canvas';
 import fs from 'fs';
 import path from 'path';
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 // D3関数をラップして使用するためのユーティリティ
 // この関数内でD3をダイナミックインポートして使用する
 async function withD3(callback: (d3: any) => any) {
-  // ダイナミックインポートを使用
-  const d3 = await import('d3');
-  return callback(d3);
+  try {
+      // ダイナミックインポートを使用
+      const d3Module = await import('d3');
+      // D3 v7では、importの結果がdefaultプロパティを持つオブジェクトになる場合がある
+      const d3 = d3Module.default || d3Module;
+      return callback(d3);
+  } catch (error) {
+      logger.error('D3インポートエラー:', { error });
+      throw error;
+  }
 }
 
 // 共通の設定
@@ -207,9 +213,8 @@ export async function generatePieChart(
   title: string
 ): Promise<string> {
   try {
-    // D3をダイナミックインポート
-    const d3 = await import('d3');
-    
+    return await withD3(async (d3) => {
+
     // データが空の場合は代替グラフを生成
     if (data.length === 0 || labels.length === 0) {
       return generateEmptyPieChart(title);
@@ -238,7 +243,7 @@ export async function generatePieChart(
     const total = chartData.reduce((sum, item) => sum + item.value, 0);
     
     // カラースケール
-    const colorScale = d3.scaleOrdinal<string>()
+    const colorScale = d3.scaleOrdinal()
       .domain(chartData.map(d => d.label))
       .range([
         'rgba(255, 99, 132, 0.7)',   // 赤
@@ -263,8 +268,8 @@ export async function generatePieChart(
     context.fillText(title, width / 2, 20);
     
     // パイチャートのデータ準備
-    const pieData = d3.pie<any>()
-      .value(d => d.value)
+    const pieData = d3.pie()
+      .value((d: { value: any; }) => d.value)
       .sort(null)(chartData);
     
     // 円グラフの描画
@@ -344,6 +349,7 @@ export async function generatePieChart(
     
     logger.debug(`円グラフを生成しました: ${filePath}`);
     return filePath;
+    });
   } catch (error) {
     logger.error('円グラフ生成エラー:', { error });
     throw error;
@@ -863,9 +869,7 @@ export async function generateHourlyStackedBarChart(
   xAxisLabel = '時間帯'
 ): Promise<string> {
   try {
-    // D3をダイナミックインポート
-    const d3 = await import('d3');
-    
+    return await withD3(async (d3) => {
     // データが空または無効な場合は代替グラフを生成
     if (!hourLabels || hourLabels.length === 0 || !data || data.length === 0) {
       return generateEmptyBarChart(title, '時間帯別データがありません');
@@ -915,7 +919,7 @@ export async function generateHourlyStackedBarChart(
       .range([innerHeight, 0]);
     
     // アプリごとの色
-    const colorScale = d3.scaleOrdinal<string>()
+    const colorScale = d3.scaleOrdinal()
       .domain(validData.map(d => d.appName))
       .range([
         'rgba(255, 99, 132, 0.7)',   // 赤
@@ -937,7 +941,7 @@ export async function generateHourlyStackedBarChart(
     
     // 水平グリッド線
     const yTicks = yScale.ticks(5);
-    yTicks.forEach(tick => {
+    yTicks.forEach((tick: any) => {
       context.moveTo(0, yScale(tick));
       context.lineTo(adjustedInnerWidth, yScale(tick));
     });
@@ -989,7 +993,7 @@ export async function generateHourlyStackedBarChart(
     context.fillStyle = '#333333';
     context.font = '12px Arial, sans-serif';
     
-    yTicks.forEach(tick => {
+    yTicks.forEach((tick: number) => {
       // Y軸の目盛り値を小数点第一位まで表示
       context.fillText(tick.toFixed(1), -10, yScale(tick));
     });
@@ -1121,7 +1125,7 @@ export async function generateHourlyStackedBarChart(
     
     logger.debug(`時間帯別積み上げ棒グラフを生成しました: ${filePath}`);
     return filePath;
-    
+    });
   } catch (error) {
     logger.error('時間帯別積み上げ棒グラフ生成エラー:', { error });
     throw error;

@@ -2,11 +2,13 @@ import express from 'express';
 import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import { IncomingWebhook } from '@slack/webhook';
-import { DailyReporter, HourlyReporter, WeeklyReporter } from './reporters'; // reporters/index.ts 経由で個別レポーターをインポート
-import { apiRouter } from './routes';
-import { healthRouter } from './routes/health';
-import { config } from './config';
-import { logger } from './utils/logger';
+import { DailyReporter } from './reporters/DailyReporter.js';
+import { HourlyReporter } from './reporters/HourlyReporter.js';
+import { WeeklyReporter } from './reporters/WeeklyReporter.js';
+import { apiRouter } from './routes/index.js';
+import { healthRouter } from './routes/health.js';
+import { config } from './config.js';
+import { logger } from './utils/logger.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -52,7 +54,7 @@ app.use('/api', apiRouter);
 app.use('/health', healthRouter);
 
 // ルートパスのハンドラ
-app.get('/', (req, res) => {
+app.get('/', (_req: any, res: { json: (arg0: { name: string; version: string; status: string; }) => void; }) => {
   res.json({
     name: 'phone-usage-slack-reporter',
     version: '1.0.0',
@@ -61,7 +63,7 @@ app.get('/', (req, res) => {
 });
 
 // 404ハンドラ
-app.use((req, res) => {
+app.use((req: express.Request, res: express.Response) => {
   res.status(404).json({
     error: 'Not Found',
     message: `リクエストされたパス ${req.path} は存在しません`

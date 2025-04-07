@@ -1,7 +1,7 @@
 // src/handlers/scheduleHandler.ts
 import cron from 'node-cron';
-import { DailyReporter, HourlyReporter, WeeklyReporter } from '../reporters'; // reporters/index.ts 経由でインポート
-import { logger } from '../utils/logger';
+import { DailyReporter, HourlyReporter, WeeklyReporter } from '../reporters/index.js'; // reporters/index.ts 経由でインポート
+import { logger } from '../utils/logger.js';
 
 export class ScheduleHandler {
   private dailyReporter: DailyReporter;

@@ -2,7 +2,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './types/supabase';
+import { Database } from './types/supabase.js';
 import fs from 'fs';
 
 // 環境変数の読み込み

@@ -1,5 +1,5 @@
 // src/test-hourly-stacked.ts
-import { generateHourlyStackedBarChart } from './utils/chart-generator';
+import { generateHourlyStackedBarChart } from './utils/chart-generator.js';
 
 async function testHourlyStackedBarChart() {
   try {
